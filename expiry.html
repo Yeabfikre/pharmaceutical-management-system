@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expiry Tracking - EPSA Pharmaceutical System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #3282B8;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        .expiry-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .expiry-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 2rem;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0.5rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: currentColor;
+        }
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: 0.8125rem;
+            top: 1.25rem;
+            width: 2px;
+            height: calc(100% - 1rem);
+            background: #e5e7eb;
+        }
+        .timeline-item:last-child::after {
+            display: none;
+        }
+        .expiry-critical { color: #dc2626; background-color: #fee2e2; }
+        .expiry-warning { color: #d97706; background-color: #fef3c7; }
+        .expiry-safe { color: #059669; background-color: #d1fae5; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notification-badge {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">EP</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">EPSA Pharma System</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="index.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
+                        <a href="inventory.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Inventory</a>
+                        <a href="expiry.html" class="nav-link active text-gray-900 font-medium">Expiry Tracking</a>
+                        <a href="orders.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Orders</a>
+                        <a href="reports.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Reports</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 relative">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-12"></path>
+                            </svg>
+                            <span class="notification-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">5</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/team-1.jpg" alt="User" class="w-8 h-8 rounded-full object-cover">
+                        <div class="hidden md:block">
+                            <p class="text-sm font-medium text-gray-900">Dr. Sarah Johnson</p>
+                            <p class="text-xs text-gray-500">System Administrator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="py-8 bg-gradient-to-r from-red-50 to-amber-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Expiry Tracking</h1>
+                    <p class="text-gray-600 mt-2">Monitor medicine expiry dates and manage alerts</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="configure-alerts-btn" class="bg-gradient-to-r from-red-600 to-amber-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Configure Alerts
+                    </button>
+                    <button class="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                        Export Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Expiry Summary Cards -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="expiry-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-red-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-100 rounded-lg">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-2xl pulse-animation">🚨</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="critical-expiry">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Critical (≤7 days)</p>
+                    <p class="text-red-600 text-xs mt-2">Immediate action required</p>
+                </div>
+
+                <div class="expiry-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-amber-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-amber-100 rounded-lg">
+                            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-2xl">⚠️</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="warning-expiry">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Warning (8-30 days)</p>
+                    <p class="text-amber-600 text-xs mt-2">Plan redistribution</p>
+                </div>
+
+                <div class="expiry-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="text-2xl">📅</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="monitoring-expiry">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Monitoring (31-90 days)</p>
+                    <p class="text-blue-600 text-xs mt-2">Track regularly</p>
+                </div>
+
+                <div class="expiry-card bg-white rounded-xl shadow-lg p-6 border-l-4 border-green-500">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                        <span class="text-2xl">✅</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="safe-expiry">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Safe (>90 days)</p>
+                    <p class="text-green-600 text-xs mt-2">Normal monitoring</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Expiry Timeline and Actions -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Expiry Timeline -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-6">Expiry Timeline</h3>
+                        <div id="expiry-timeline" class="space-y-4">
+                            <!-- Timeline items will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expiry Chart -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Expiry Distribution</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md">30 Days</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">90 Days</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">1 Year</button>
+                            </div>
+                        </div>
+                        <div id="expiry-chart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Medicine Details Table -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">Medicines by Expiry Status</h3>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex space-x-2">
+                                <button id="filter-critical" class="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md">Critical</button>
+                                <button id="filter-warning" class="px-3 py-1 text-sm bg-amber-100 text-amber-700 rounded-md">Warning</button>
+                                <button id="filter-all" class="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-md">All</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Medicine</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Left</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expiry-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Alert Configuration Modal -->
+    <div id="alert-config-modal" class="modal">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Configure Expiry Alerts</h3>
+                <button id="close-alert-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="alert-config-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Alert Thresholds</label>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Critical Alert (days)</span>
+                            <input type="number" id="critical-days" value="7" min="1" max="30"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded text-center">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Warning Alert (days)</span>
+                            <input type="number" id="warning-days" value="30" min="7" max="90"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded text-center">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-sm text-gray-600">Monitoring Alert (days)</span>
+                            <input type="number" id="monitoring-days" value="90" min="30" max="180"
+                                   class="w-20 px-2 py-1 border border-gray-300 rounded text-center">
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Notification Methods</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="email-alerts" checked class="rounded border-gray-300 text-teal-600 focus:ring-teal-500">
+                            <span class="ml-2 text-sm text-gray-600">Email Notifications</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="dashboard-alerts" checked class="rounded border-gray-300 text-teal-600 focus:ring-teal-500">
+                            <span class="ml-2 text-sm text-gray-600">Dashboard Alerts</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="sms-alerts" class="rounded border-gray-300 text-teal-600 focus:ring-teal-500">
+                            <span class="ml-2 text-sm text-gray-600">SMS Notifications</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-red-600 to-amber-600 text-white py-2 px-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Save Settings
+                    </button>
+                    <button type="button" id="cancel-alert-config" class="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm text-gray-400">© 2025 EPSA Pharmaceutical Management System. All rights reserved.</p>
+                <p class="text-xs text-gray-500 mt-2">Ethiopian Pharmaceutical Supply Agency</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        // Expiry tracking specific functionality
+        let expiryData = [];
+        let filteredExpiryData = [];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeExpiryPage();
+        });
+
+        function initializeExpiryPage() {
+            generateMockExpiryData();
+            updateExpirySummary();
+            renderExpiryTimeline();
+            renderExpiryChart();
+            renderExpiryTable();
+            initializeFilters();
+            initializeAlertModal();
+            
+            // Animate page elements
+            anime({
+                targets: '.expiry-card',
+                translateY: [20, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: anime.stagger(100),
+                easing: 'easeOutCubic'
+            });
+        }
+
+        function generateMockExpiryData() {
+            const medicines = [
+                'Paracetamol 500mg', 'Amoxicillin 250mg', 'Ibuprofen 400mg', 'Metformin 500mg', 'Lisinopril 10mg',
+                'Aspirin 100mg', 'Omeprazole 20mg', 'Atorvastatin 20mg', 'Levothyroxine 50mcg', 'Simvastatin 40mg',
+                'Losartan 50mg', 'Amlodipine 5mg', 'Metoprolol 25mg', 'Prednisone 5mg', 'Tramadol 50mg',
+                'Ciprofloxacin 500mg', 'Azithromycin 250mg', 'Pantoprazole 40mg', 'Sertraline 50mg', 'Gabapentin 300mg'
+            ];
+            
+            const warehouses = ['Central', 'Regional', 'District'];
+            const batches = ['B001', 'B002', 'B003', 'B004', 'B005'];
+            
+            expiryData = medicines.map((medicine, index) => {
+                const today = new Date();
+                const expiryDate = new Date();
+                const daysUntilExpiry = Math.floor(Math.random() * 120) - 10; // -10 to 110 days
+                expiryDate.setDate(today.getDate() + daysUntilExpiry);
+                
+                let status;
+                if (daysUntilExpiry <= 7) status = 'critical';
+                else if (daysUntilExpiry <= 30) status = 'warning';
+                else if (daysUntilExpiry <= 90) status = 'monitoring';
+                else status = 'safe';
+                
+                return {
+                    id: index + 1,
+                    medicine: medicine,
+                    batch: batches[Math.floor(Math.random() * batches.length)] + String(Math.floor(Math.random() * 1000)).padStart(3, '0'),
+                    warehouse: warehouses[Math.floor(Math.random() * warehouses.length)],
+                    quantity: Math.floor(Math.random() * 5000) + 100,
+                    expiryDate: expiryDate.toISOString().split('T')[0],
+                    daysUntilExpiry: daysUntilExpiry,
+                    status: status
+                };
+            });
+            
+            filteredExpiryData = [...expiryData];
+        }
+
+        function updateExpirySummary() {
+            const summary = {
+                critical: expiryData.filter(item => item.status === 'critical').length,
+                warning: expiryData.filter(item => item.status === 'warning').length,
+                monitoring: expiryData.filter(item => item.status === 'monitoring').length,
+                safe: expiryData.filter(item => item.status === 'safe').length
+            };
+            
+            animateCounter(document.getElementById('critical-expiry'), summary.critical, 1000);
+            animateCounter(document.getElementById('warning-expiry'), summary.warning, 1200);
+            animateCounter(document.getElementById('monitoring-expiry'), summary.monitoring, 1400);
+            animateCounter(document.getElementById('safe-expiry'), summary.safe, 1600);
+        }
+
+        function animateCounter(element, target, duration) {
+            let start = 0;
+            const increment = target / (duration / 16);
+            
+            function updateCounter() {
+                start += increment;
+                if (start < target) {
+                    element.textContent = Math.floor(start);
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    element.textContent = target;
+                }
+            }
+            
+            setTimeout(updateCounter, 300);
+        }
+
+        function renderExpiryTimeline() {
+            const timeline = document.getElementById('expiry-timeline');
+            timeline.innerHTML = '';
+            
+            const criticalItems = expiryData
+                .filter(item => item.status === 'critical' || item.status === 'warning')
+                .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry)
+                .slice(0, 8);
+            
+            criticalItems.forEach((item, index) => {
+                const timelineItem = document.createElement('div');
+                timelineItem.className = 'timeline-item';
+                timelineItem.style.color = getStatusColor(item.status);
+                timelineItem.innerHTML = `
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-medium text-gray-900 text-sm">${item.medicine}</h4>
+                            <span class="text-xs font-semibold ${getStatusClass(item.status)} px-2 py-1 rounded-full">
+                                ${item.daysUntilExpiry > 0 ? `${item.daysUntilExpiry} days` : 'Expired'}
+                            </span>
+                        </div>
+                        <p class="text-xs text-gray-600">Batch: ${item.batch} • ${item.warehouse} Warehouse</p>
+                        <p class="text-xs text-gray-500 mt-1">Expires: ${formatDate(item.expiryDate)}</p>
+                    </div>
+                `;
+                timeline.appendChild(timelineItem);
+                
+                // Animate timeline item
+                anime({
+                    targets: timelineItem,
+                    translateX: [-20, 0],
+                    opacity: [0, 1],
+                    duration: 400,
+                    delay: index * 100,
+                    easing: 'easeOutCubic'
+                });
+            });
+        }
+
+        function renderExpiryChart() {
+            const chartElement = document.getElementById('expiry-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const summary = {
+                'Critical (≤7 days)': expiryData.filter(item => item.status === 'critical').length,
+                'Warning (8-30 days)': expiryData.filter(item => item.status === 'warning').length,
+                'Monitoring (31-90 days)': expiryData.filter(item => item.status === 'monitoring').length,
+                'Safe (>90 days)': expiryData.filter(item => item.status === 'safe').length
+            };
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    bottom: 0,
+                    left: 'center'
+                },
+                series: [
+                    {
+                        name: 'Expiry Status',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['50%', '45%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '18',
+                                fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: [
+                            { value: summary['Critical (≤7 days)'], name: 'Critical (≤7 days)', itemStyle: { color: '#dc2626' } },
+                            { value: summary['Warning (8-30 days)'], name: 'Warning (8-30 days)', itemStyle: { color: '#d97706' } },
+                            { value: summary['Monitoring (31-90 days)'], name: 'Monitoring (31-90 days)', itemStyle: { color: '#2563eb' } },
+                            { value: summary['Safe (>90 days)'], name: 'Safe (>90 days)', itemStyle: { color: '#059669' } }
+                        ]
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function renderExpiryTable() {
+            const tbody = document.getElementById('expiry-table');
+            tbody.innerHTML = '';
+            
+            filteredExpiryData
+                .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry)
+                .forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item.medicine}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.batch}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${item.warehouse} Warehouse</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">${item.quantity.toLocaleString()}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(item.expiryDate)}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold ${getDaysLeftClass(item.daysUntilExpiry)}">
+                            ${item.daysUntilExpiry > 0 ? `${item.daysUntilExpiry} days` : 'Expired'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(item.status)}">
+                                ${item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button class="text-teal-600 hover:text-teal-900 mr-3" onclick="viewExpiryDetails(${item.id})">View</button>
+                            <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="redistributeMedicine(${item.id})">Redistribute</button>
+                            <button class="text-red-600 hover:text-red-900" onclick="disposeMedicine(${item.id})">Dispose</button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                    
+                    // Animate row appearance
+                    anime({
+                        targets: row,
+                        translateX: [-20, 0],
+                        opacity: [0, 1],
+                        duration: 400,
+                        delay: index * 50,
+                        easing: 'easeOutCubic'
+                    });
+                });
+        }
+
+        function initializeFilters() {
+            document.getElementById('filter-critical').addEventListener('click', () => filterByStatus('critical'));
+            document.getElementById('filter-warning').addEventListener('click', () => filterByStatus('warning'));
+            document.getElementById('filter-all').addEventListener('click', () => filterByStatus(''));
+        }
+
+        function filterByStatus(status) {
+            if (!status) {
+                filteredExpiryData = [...expiryData];
+            } else {
+                filteredExpiryData = expiryData.filter(item => item.status === status);
+            }
+            renderExpiryTable();
+        }
+
+        function initializeAlertModal() {
+            const configureBtn = document.getElementById('configure-alerts-btn');
+            const modal = document.getElementById('alert-config-modal');
+            const closeBtn = document.getElementById('close-alert-modal');
+            const cancelBtn = document.getElementById('cancel-alert-config');
+            const form = document.getElementById('alert-config-form');
+            
+            configureBtn.addEventListener('click', () => {
+                modal.classList.add('show');
+                anime({
+                    targets: modal.querySelector('.bg-white'),
+                    scale: [0.8, 1],
+                    opacity: [0, 1],
+                    duration: 300,
+                    easing: 'easeOutCubic'
+                });
+            });
+            
+            [closeBtn, cancelBtn].forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('show');
+                });
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveAlertSettings();
+            });
+        }
+
+        function saveAlertSettings() {
+            const criticalDays = document.getElementById('critical-days').value;
+            const warningDays = document.getElementById('warning-days').value;
+            const monitoringDays = document.getElementById('monitoring-days').value;
+            
+            // Save settings to localStorage (in real app, would save to server)
+            localStorage.setItem('expiryAlertSettings', JSON.stringify({
+                critical: criticalDays,
+                warning: warningDays,
+                monitoring: monitoringDays
+            }));
+            
+            document.getElementById('alert-config-modal').classList.remove('show');
+            EPSA.showNotification('Alert settings saved successfully!', 'success');
+        }
+
+        function viewExpiryDetails(id) {
+            const item = expiryData.find(item => item.id === id);
+            if (item) {
+                EPSA.showNotification(`Viewing details for ${item.medicine}`, 'info');
+            }
+        }
+
+        function redistributeMedicine(id) {
+            const item = expiryData.find(item => item.id === id);
+            if (item) {
+                EPSA.showNotification(`${item.medicine} marked for redistribution`, 'success');
+            }
+        }
+
+        function disposeMedicine(id) {
+            const item = expiryData.find(item => item.id === id);
+            if (item && confirm(`Dispose ${item.medicine} (Batch: ${item.batch})?`)) {
+                EPSA.showNotification(`${item.medicine} marked for disposal`, 'success');
+            }
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                'critical': '#dc2626',
+                'warning': '#d97706',
+                'monitoring': '#2563eb',
+                'safe': '#059669'
+            };
+            return colors[status] || '#6b7280';
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'critical': 'expiry-critical',
+                'warning': 'expiry-warning',
+                'monitoring': 'bg-blue-100 text-blue-800',
+                'safe': 'expiry-safe'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getDaysLeftClass(days) {
+            if (days <= 0) return 'text-red-600';
+            if (days <= 7) return 'text-red-600';
+            if (days <= 30) return 'text-amber-600';
+            return 'text-green-600';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+    </script>
+</body>
+</html>

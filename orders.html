@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management - EPSA Pharmaceutical System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #3282B8;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        .order-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .order-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .status-pending { color: #d97706; background-color: #fef3c7; }
+        .status-processing { color: #2563eb; background-color: #dbeafe; }
+        .status-shipped { color: #7c3aed; background-color: #e9d5ff; }
+        .status-delivered { color: #059669; background-color: #d1fae5; }
+        .status-cancelled { color: #dc2626; background-color: #fee2e2; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .step-indicator {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .step-indicator.completed {
+            background-color: #10b981;
+            color: white;
+        }
+        .step-indicator.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .step-indicator.inactive {
+            background-color: #e5e7eb;
+            color: #6b7280;
+        }
+        .notification-badge {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">EP</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">EPSA Pharma System</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="index.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
+                        <a href="inventory.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Inventory</a>
+                        <a href="expiry.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Expiry Tracking</a>
+                        <a href="orders.html" class="nav-link active text-gray-900 font-medium">Orders</a>
+                        <a href="reports.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Reports</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 relative">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-12"></path>
+                            </svg>
+                            <span class="notification-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">1</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/team-1.jpg" alt="User" class="w-8 h-8 rounded-full object-cover">
+                        <div class="hidden md:block">
+                            <p class="text-sm font-medium text-gray-900">Dr. Sarah Johnson</p>
+                            <p class="text-xs text-gray-500">System Administrator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="py-8 bg-gradient-to-r from-blue-50 to-teal-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Order Management</h1>
+                    <p class="text-gray-600 mt-2">Manage pharmaceutical procurement and supplier orders</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="create-order-btn" class="bg-gradient-to-r from-blue-600 to-teal-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Create Order
+                    </button>
+                    <button class="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                        Export Orders
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Order Statistics -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+                <div class="order-card bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="total-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Total Orders</p>
+                </div>
+
+                <div class="order-card bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-amber-100 rounded-lg">
+                            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="pending-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Pending</p>
+                </div>
+
+                <div class="order-card bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="processing-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Processing</p>
+                </div>
+
+                <div class="order-card bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-purple-100 rounded-lg">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="shipped-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Shipped</p>
+                </div>
+
+                <div class="order-card bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="delivered-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Delivered</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Orders Chart and Recent Orders -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Order Status Chart -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Order Status Distribution</h3>
+                    <div id="orders-chart" class="chart-container"></div>
+                </div>
+
+                <!-- Recent Orders -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Recent Orders</h3>
+                    <div class="space-y-4" id="recent-orders">
+                        <!-- Recent orders will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Orders Table -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-semibold text-gray-900">All Orders</h3>
+                        <div class="flex items-center space-x-4">
+                            <input type="text" id="order-search" placeholder="Search orders..." 
+                                   class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <select id="status-filter" class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="processing">Processing</option>
+                                <option value="shipped">Shipped</option>
+                                <option value="delivered">Delivered</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected Delivery</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Table rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Create Order Modal -->
+    <div id="create-order-modal" class="modal">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full mx-4 p-6">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Create New Order</h3>
+                <button id="close-order-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Step Indicators -->
+            <div class="flex items-center justify-center mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <div class="step-indicator active" id="step-1-indicator">1</div>
+                        <span class="ml-2 text-sm font-medium text-gray-900">Supplier</span>
+                    </div>
+                    <div class="w-12 h-0.5 bg-gray-300"></div>
+                    <div class="flex items-center">
+                        <div class="step-indicator inactive" id="step-2-indicator">2</div>
+                        <span class="ml-2 text-sm font-medium text-gray-500">Medicines</span>
+                    </div>
+                    <div class="w-12 h-0.5 bg-gray-300"></div>
+                    <div class="flex items-center">
+                        <div class="step-indicator inactive" id="step-3-indicator">3</div>
+                        <span class="ml-2 text-sm font-medium text-gray-500">Review</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Supplier Selection -->
+            <div class="step active" id="step-1">
+                <h4 class="text-lg font-medium text-gray-900 mb-4">Select Supplier</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="supplier-list">
+                    <!-- Suppliers will be populated by JavaScript -->
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button id="next-to-medicines" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200" disabled>
+                        Next: Select Medicines
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Medicine Selection -->
+            <div class="step" id="step-2">
+                <h4 class="text-lg font-medium text-gray-900 mb-4">Select Medicines</h4>
+                <div class="space-y-4" id="medicine-list">
+                    <!-- Medicines will be populated by JavaScript -->
+                </div>
+                <div class="flex justify-between mt-6">
+                    <button id="back-to-supplier" class="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-colors duration-200">
+                        Back to Supplier
+                    </button>
+                    <button id="next-to-review" class="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors duration-200" disabled>
+                        Next: Review Order
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Order Review -->
+            <div class="step" id="step-3">
+                <h4 class="text-lg font-medium text-gray-900 mb-4">Review Order</h4>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div id="order-summary">
+                        <!-- Order summary will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="flex justify-between mt-6">
+                    <button id="back-to-medicines" class="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-colors duration-200">
+                        Back to Medicines
+                    </button>
+                    <button id="submit-order" class="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-200">
+                        Submit Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm text-gray-400">© 2025 EPSA Pharmaceutical Management System. All rights reserved.</p>
+                <p class="text-xs text-gray-500 mt-2">Ethiopian Pharmaceutical Supply Agency</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        // Order management specific functionality
+        let ordersData = [];
+        let filteredOrdersData = [];
+        let suppliersData = [];
+        let medicinesData = [];
+        let selectedSupplier = null;
+        let selectedMedicines = [];
+        let currentStep = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeOrdersPage();
+        });
+
+        function initializeOrdersPage() {
+            generateMockOrdersData();
+            generateMockSuppliersData();
+            generateMockMedicinesData();
+            updateOrderStatistics();
+            renderOrdersChart();
+            renderRecentOrders();
+            renderOrdersTable();
+            initializeOrderModal();
+            
+            // Initialize filters
+            document.getElementById('order-search').addEventListener('input', filterOrders);
+            document.getElementById('status-filter').addEventListener('change', filterOrders);
+            
+            // Animate page elements
+            anime({
+                targets: '.order-card',
+                translateY: [20, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: anime.stagger(100),
+                easing: 'easeOutCubic'
+            });
+        }
+
+        function generateMockOrdersData() {
+            const suppliers = ['MedSupply Co.', 'PharmaCare Ltd.', 'HealthPlus Inc.', 'Global Medics', 'EthioPharma'];
+            const statuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+            
+            ordersData = [];
+            for (let i = 1; i <= 25; i++) {
+                const orderDate = new Date();
+                orderDate.setDate(orderDate.getDate() - Math.floor(Math.random() * 30));
+                
+                const expectedDelivery = new Date(orderDate);
+                expectedDelivery.setDate(expectedDelivery.getDate() + Math.floor(Math.random() * 14) + 3);
+                
+                ordersData.push({
+                    id: `ORD-2025-${String(i).padStart(3, '0')}`,
+                    supplier: suppliers[Math.floor(Math.random() * suppliers.length)],
+                    orderDate: orderDate.toISOString().split('T')[0],
+                    expectedDelivery: expectedDelivery.toISOString().split('T')[0],
+                    totalAmount: Math.floor(Math.random() * 50000) + 5000,
+                    status: statuses[Math.floor(Math.random() * statuses.length)],
+                    items: Math.floor(Math.random() * 10) + 1
+                });
+            }
+            
+            filteredOrdersData = [...ordersData];
+        }
+
+        function generateMockSuppliersData() {
+            suppliersData = [
+                { id: 1, name: 'MedSupply Co.', contact: '+251-11-123-4567', rating: 4.8, location: 'Addis Ababa' },
+                { id: 2, name: 'PharmaCare Ltd.', contact: '+251-11-234-5678', rating: 4.6, location: 'Dire Dawa' },
+                { id: 3, name: 'HealthPlus Inc.', contact: '+251-11-345-6789', rating: 4.9, location: 'Bahir Dar' },
+                { id: 4, name: 'Global Medics', contact: '+251-11-456-7890', rating: 4.5, location: 'Hawassa' },
+                { id: 5, name: 'EthioPharma', contact: '+251-11-567-8901', rating: 4.7, location: 'Gondar' }
+            ];
+        }
+
+        function generateMockMedicinesData() {
+            medicinesData = [
+                { id: 1, name: 'Paracetamol 500mg', category: 'Analgesic', unitPrice: 0.50, stock: 12500 },
+                { id: 2, name: 'Amoxicillin 250mg', category: 'Antibiotic', unitPrice: 1.20, stock: 8500 },
+                { id: 3, name: 'Ibuprofen 400mg', category: 'NSAID', unitPrice: 0.80, stock: 6200 },
+                { id: 4, name: 'Metformin 500mg', category: 'Antidiabetic', unitPrice: 1.50, stock: 9800 },
+                { id: 5, name: 'Lisinopril 10mg', category: 'ACE Inhibitor', unitPrice: 2.10, stock: 4500 },
+                { id: 6, name: 'Aspirin 100mg', category: 'Anticoagulant', unitPrice: 0.30, stock: 11200 },
+                { id: 7, name: 'Omeprazole 20mg', category: 'PPI', unitPrice: 1.80, stock: 7300 },
+                { id: 8, name: 'Atorvastatin 20mg', category: 'Statin', unitPrice: 3.20, stock: 5600 }
+            ];
+        }
+
+        function updateOrderStatistics() {
+            const stats = {
+                total: ordersData.length,
+                pending: ordersData.filter(o => o.status === 'pending').length,
+                processing: ordersData.filter(o => o.status === 'processing').length,
+                shipped: ordersData.filter(o => o.status === 'shipped').length,
+                delivered: ordersData.filter(o => o.status === 'delivered').length
+            };
+            
+            animateCounter(document.getElementById('total-orders'), stats.total, 1000);
+            animateCounter(document.getElementById('pending-orders'), stats.pending, 1200);
+            animateCounter(document.getElementById('processing-orders'), stats.processing, 1400);
+            animateCounter(document.getElementById('shipped-orders'), stats.shipped, 1600);
+            animateCounter(document.getElementById('delivered-orders'), stats.delivered, 1800);
+        }
+
+        function animateCounter(element, target, duration) {
+            let start = 0;
+            const increment = target / (duration / 16);
+            
+            function updateCounter() {
+                start += increment;
+                if (start < target) {
+                    element.textContent = Math.floor(start);
+                    requestAnimationFrame(updateCounter);
+                } else {
+                    element.textContent = target;
+                }
+            }
+            
+            setTimeout(updateCounter, 300);
+        }
+
+        function renderOrdersChart() {
+            const chartElement = document.getElementById('orders-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const statusCounts = {
+                'Pending': ordersData.filter(o => o.status === 'pending').length,
+                'Processing': ordersData.filter(o => o.status === 'processing').length,
+                'Shipped': ordersData.filter(o => o.status === 'shipped').length,
+                'Delivered': ordersData.filter(o => o.status === 'delivered').length,
+                'Cancelled': ordersData.filter(o => o.status === 'cancelled').length
+            };
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                legend: {
+                    bottom: 0,
+                    left: 'center'
+                },
+                series: [
+                    {
+                        name: 'Order Status',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['50%', '45%'],
+                        avoidLabelOverlap: false,
+                        itemStyle: {
+                            borderRadius: 10,
+                            borderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        label: {
+                            show: false,
+                            position: 'center'
+                        },
+                        emphasis: {
+                            label: {
+                                show: true,
+                                fontSize: '18',
+                                fontWeight: 'bold'
+                            }
+                        },
+                        labelLine: {
+                            show: false
+                        },
+                        data: [
+                            { value: statusCounts['Pending'], name: 'Pending', itemStyle: { color: '#d97706' } },
+                            { value: statusCounts['Processing'], name: 'Processing', itemStyle: { color: '#2563eb' } },
+                            { value: statusCounts['Shipped'], name: 'Shipped', itemStyle: { color: '#7c3aed' } },
+                            { value: statusCounts['Delivered'], name: 'Delivered', itemStyle: { color: '#059669' } },
+                            { value: statusCounts['Cancelled'], name: 'Cancelled', itemStyle: { color: '#dc2626' } }
+                        ]
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function renderRecentOrders() {
+            const container = document.getElementById('recent-orders');
+            container.innerHTML = '';
+            
+            const recentOrders = ordersData
+                .sort((a, b) => new Date(b.orderDate) - new Date(a.orderDate))
+                .slice(0, 5);
+            
+            recentOrders.forEach((order, index) => {
+                const orderElement = document.createElement('div');
+                orderElement.className = 'border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors duration-200 cursor-pointer';
+                orderElement.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium text-gray-900">${order.id}</h4>
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(order.status)}">
+                            ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                    </div>
+                    <p class="text-sm text-gray-600">${order.supplier}</p>
+                    <div class="flex items-center justify-between mt-2">
+                        <span class="text-sm text-gray-500">${formatDate(order.orderDate)}</span>
+                        <span class="text-sm font-semibold text-gray-900">$${order.totalAmount.toLocaleString()}</span>
+                    </div>
+                `;
+                container.appendChild(orderElement);
+                
+                orderElement.addEventListener('click', () => viewOrderDetails(order.id));
+                
+                // Animate order element
+                anime({
+                    targets: orderElement,
+                    translateX: [-20, 0],
+                    opacity: [0, 1],
+                    duration: 400,
+                    delay: index * 100,
+                    easing: 'easeOutCubic'
+                });
+            });
+        }
+
+        function renderOrdersTable() {
+            const tbody = document.getElementById('orders-table');
+            tbody.innerHTML = '';
+            
+            filteredOrdersData.forEach((order, index) => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 transition-colors duration-200';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${order.id}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${order.supplier}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(order.orderDate)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(order.expectedDelivery)}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">$${order.totalAmount.toLocaleString()}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(order.status)}">
+                            ${order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button class="text-teal-600 hover:text-teal-900 mr-3" onclick="viewOrderDetails('${order.id}')">View</button>
+                        <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editOrder('${order.id}')">Edit</button>
+                        <button class="text-red-600 hover:text-red-900" onclick="cancelOrder('${order.id}')">Cancel</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                
+                // Animate row appearance
+                anime({
+                    targets: row,
+                    translateX: [-20, 0],
+                    opacity: [0, 1],
+                    duration: 400,
+                    delay: index * 50,
+                    easing: 'easeOutCubic'
+                });
+            });
+        }
+
+        function filterOrders() {
+            const searchTerm = document.getElementById('order-search').value.toLowerCase();
+            const statusFilter = document.getElementById('status-filter').value;
+            
+            filteredOrdersData = ordersData.filter(order => {
+                const matchesSearch = !searchTerm || 
+                    order.id.toLowerCase().includes(searchTerm) ||
+                    order.supplier.toLowerCase().includes(searchTerm);
+                
+                const matchesStatus = !statusFilter || order.status === statusFilter;
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderOrdersTable();
+        }
+
+        function initializeOrderModal() {
+            const createBtn = document.getElementById('create-order-btn');
+            const modal = document.getElementById('create-order-modal');
+            const closeBtn = document.getElementById('close-order-modal');
+            
+            createBtn.addEventListener('click', () => {
+                modal.classList.add('show');
+                resetOrderForm();
+                renderSuppliers();
+                anime({
+                    targets: modal.querySelector('.bg-white'),
+                    scale: [0.8, 1],
+                    opacity: [0, 1],
+                    duration: 300,
+                    easing: 'easeOutCubic'
+                });
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                modal.classList.remove('show');
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+            
+            // Step navigation
+            document.getElementById('next-to-medicines').addEventListener('click', () => goToStep(2));
+            document.getElementById('back-to-supplier').addEventListener('click', () => goToStep(1));
+            document.getElementById('next-to-review').addEventListener('click', () => goToStep(3));
+            document.getElementById('back-to-medicines').addEventListener('click', () => goToStep(2));
+            document.getElementById('submit-order').addEventListener('click', submitOrder);
+        }
+
+        function resetOrderForm() {
+            selectedSupplier = null;
+            selectedMedicines = [];
+            currentStep = 1;
+            updateStepIndicators();
+        }
+
+        function goToStep(step) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            
+            // Show target step
+            document.getElementById(`step-${step}`).classList.add('active');
+            
+            currentStep = step;
+            updateStepIndicators();
+            
+            if (step === 2) {
+                renderMedicines();
+            } else if (step === 3) {
+                renderOrderSummary();
+            }
+        }
+
+        function updateStepIndicators() {
+            for (let i = 1; i <= 3; i++) {
+                const indicator = document.getElementById(`step-${i}-indicator`);
+                const text = indicator.parentElement.querySelector('span');
+                
+                if (i < currentStep) {
+                    indicator.className = 'step-indicator completed';
+                    indicator.innerHTML = '✓';
+                    text.className = 'ml-2 text-sm font-medium text-gray-900';
+                } else if (i === currentStep) {
+                    indicator.className = 'step-indicator active';
+                    indicator.innerHTML = i;
+                    text.className = 'ml-2 text-sm font-medium text-gray-900';
+                } else {
+                    indicator.className = 'step-indicator inactive';
+                    indicator.innerHTML = i;
+                    text.className = 'ml-2 text-sm font-medium text-gray-500';
+                }
+            }
+        }
+
+        function renderSuppliers() {
+            const container = document.getElementById('supplier-list');
+            container.innerHTML = '';
+            
+            suppliersData.forEach(supplier => {
+                const supplierCard = document.createElement('div');
+                supplierCard.className = 'border border-gray-200 rounded-lg p-4 cursor-pointer hover:border-blue-500 transition-colors duration-200';
+                supplierCard.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-medium text-gray-900">${supplier.name}</h4>
+                        <div class="flex items-center">
+                            <span class="text-yellow-400">★</span>
+                            <span class="text-sm text-gray-600 ml-1">${supplier.rating}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-2">${supplier.location}</p>
+                    <p class="text-sm text-gray-500">${supplier.contact}</p>
+                `;
+                
+                supplierCard.addEventListener('click', () => {
+                    // Remove previous selection
+                    container.querySelectorAll('.border-blue-500').forEach(card => {
+                        card.classList.remove('border-blue-500');
+                        card.classList.add('border-gray-200');
+                    });
+                    
+                    // Select current supplier
+                    supplierCard.classList.remove('border-gray-200');
+                    supplierCard.classList.add('border-blue-500');
+                    
+                    selectedSupplier = supplier;
+                    document.getElementById('next-to-medicines').disabled = false;
+                });
+                
+                container.appendChild(supplierCard);
+            });
+        }
+
+        function renderMedicines() {
+            const container = document.getElementById('medicine-list');
+            container.innerHTML = '';
+            
+            medicinesData.forEach(medicine => {
+                const medicineRow = document.createElement('div');
+                medicineRow.className = 'flex items-center justify-between border border-gray-200 rounded-lg p-3';
+                medicineRow.innerHTML = `
+                    <div class="flex-1">
+                        <h4 class="font-medium text-gray-900">${medicine.name}</h4>
+                        <p class="text-sm text-gray-600">${medicine.category} • Current Stock: ${medicine.stock.toLocaleString()}</p>
+                        <p class="text-sm font-semibold text-gray-900">$${medicine.unitPrice.toFixed(2)} per unit</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <input type="number" min="0" max="10000" value="0" 
+                               class="w-20 px-2 py-1 border border-gray-300 rounded text-center" 
+                               onchange="updateMedicineQuantity(${medicine.id}, this.value)">
+                        <span class="text-sm text-gray-500 w-16 text-right">$0.00</span>
+                    </div>
+                `;
+                
+                container.appendChild(medicineRow);
+            });
+        }
+
+        function updateMedicineQuantity(medicineId, quantity) {
+            const medicine = medicinesData.find(m => m.id === medicineId);
+            const quantityNum = parseInt(quantity) || 0;
+            
+            if (quantityNum > 0) {
+                const existingIndex = selectedMedicines.findIndex(m => m.id === medicineId);
+                if (existingIndex >= 0) {
+                    selectedMedicines[existingIndex].quantity = quantityNum;
+                    selectedMedicines[existingIndex].total = quantityNum * medicine.unitPrice;
+                } else {
+                    selectedMedicines.push({
+                        ...medicine,
+                        quantity: quantityNum,
+                        total: quantityNum * medicine.unitPrice
+                    });
+                }
+            } else {
+                selectedMedicines = selectedMedicines.filter(m => m.id !== medicineId);
+            }
+            
+            // Update total in UI
+            const medicineRow = event.target.closest('.flex');
+            const totalSpan = medicineRow.querySelector('span:last-child');
+            totalSpan.textContent = `$${(quantityNum * medicine.unitPrice).toFixed(2)}`;
+            
+            // Enable/disable next button
+            document.getElementById('next-to-review').disabled = selectedMedicines.length === 0;
+        }
+
+        function renderOrderSummary() {
+            const container = document.getElementById('order-summary');
+            const totalAmount = selectedMedicines.reduce((sum, med) => sum + med.total, 0);
+            
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="border-b border-gray-200 pb-4">
+                        <h5 class="font-medium text-gray-900 mb-2">Supplier</h5>
+                        <p class="text-gray-600">${selectedSupplier.name}</p>
+                        <p class="text-sm text-gray-500">${selectedSupplier.contact} • ${selectedSupplier.location}</p>
+                    </div>
+                    
+                    <div class="border-b border-gray-200 pb-4">
+                        <h5 class="font-medium text-gray-900 mb-2">Medicines (${selectedMedicines.length})</h5>
+                        <div class="space-y-2">
+                            ${selectedMedicines.map(med => `
+                                <div class="flex justify-between text-sm">
+                                    <span class="text-gray-600">${med.name} × ${med.quantity}</span>
+                                    <span class="font-medium">$${med.total.toFixed(2)}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center">
+                        <span class="text-lg font-semibold text-gray-900">Total Amount</span>
+                        <span class="text-lg font-bold text-green-600">$${totalAmount.toFixed(2)}</span>
+                    </div>
+                    
+                    <div class="text-sm text-gray-500">
+                        Expected delivery: ${formatDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])}
+                    </div>
+                </div>
+            `;
+        }
+
+        function submitOrder() {
+            const totalAmount = selectedMedicines.reduce((sum, med) => sum + med.total, 0);
+            const newOrder = {
+                id: `ORD-2025-${String(ordersData.length + 1).padStart(3, '0')}`,
+                supplier: selectedSupplier.name,
+                orderDate: new Date().toISOString().split('T')[0],
+                expectedDelivery: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                totalAmount: totalAmount,
+                status: 'pending',
+                items: selectedMedicines.length
+            };
+            
+            ordersData.unshift(newOrder);
+            filteredOrdersData = [...ordersData];
+            
+            document.getElementById('create-order-modal').classList.remove('show');
+            renderOrdersTable();
+            renderRecentOrders();
+            updateOrderStatistics();
+            
+            EPSA.showNotification(`Order ${newOrder.id} created successfully!`, 'success');
+        }
+
+        function viewOrderDetails(orderId) {
+            const order = ordersData.find(o => o.id === orderId);
+            if (order) {
+                EPSA.showNotification(`Viewing details for ${order.id}`, 'info');
+            }
+        }
+
+        function editOrder(orderId) {
+            EPSA.showNotification('Edit functionality coming soon!', 'info');
+        }
+
+        function cancelOrder(orderId) {
+            const order = ordersData.find(o => o.id === orderId);
+            if (order && confirm(`Cancel order ${orderId}?`)) {
+                order.status = 'cancelled';
+                renderOrdersTable();
+                renderRecentOrders();
+                updateOrderStatistics();
+                EPSA.showNotification(`Order ${orderId} cancelled`, 'success');
+            }
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                'pending': 'status-pending',
+                'processing': 'status-processing',
+                'shipped': 'status-shipped',
+                'delivered': 'status-delivered',
+                'cancelled': 'status-cancelled'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+        }
+    </script>
+</body>
+</html>

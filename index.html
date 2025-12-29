@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPSA Pharmaceutical Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/typed.js/2.0.12/typed.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@7.3.2/dist/pixi.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/js/splide.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@splidejs/splide@4.1.4/dist/css/splide.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .hero-bg {
+            background: linear-gradient(rgba(15, 76, 117, 0.1), rgba(50, 130, 184, 0.05));
+        }
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-good { background-color: #4ECDC4; }
+        .status-warning { background-color: #FFE66D; }
+        .status-critical { background-color: #FF6B6B; }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #3282B8;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        .metric-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .alert-pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+        .notification-badge {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">EP</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">EPSA Pharma System</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="index.html" class="nav-link active text-gray-900 font-medium">Dashboard</a>
+                        <a href="inventory.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Inventory</a>
+                        <a href="expiry.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Expiry Tracking</a>
+                        <a href="orders.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Orders</a>
+                        <a href="reports.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Reports</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 relative">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-12"></path>
+                            </svg>
+                            <span class="notification-badge absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/team-1.jpg" alt="User" class="w-8 h-8 rounded-full object-cover">
+                        <div class="hidden md:block">
+                            <p class="text-sm font-medium text-gray-900">Dr. Sarah Johnson</p>
+                            <p class="text-xs text-gray-500">System Administrator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-bg py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+                <div class="space-y-6">
+                    <div class="space-y-4">
+                        <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                            Pharmaceutical Management
+                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-blue-600">
+                                <span id="typed-text"></span>
+                            </span>
+                        </h1>
+                        <p class="text-xl text-gray-600 leading-relaxed">
+                            Comprehensive EPSA pharmaceutical supply chain management system with real-time inventory tracking, automated expiry monitoring, and intelligent reporting.
+                        </p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button class="bg-gradient-to-r from-teal-600 to-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-lg transition-all duration-300 transform hover:scale-105">
+                            View Inventory
+                        </button>
+                        <button class="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                            Generate Report
+                        </button>
+                    </div>
+                </div>
+                <div class="relative">
+                    <img src="resources/hero-dashboard.png" alt="Dashboard Interface" class="w-full h-auto rounded-2xl shadow-2xl">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Metrics -->
+    <section class="py-12 -mt-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="metric-card card-hover rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-teal-100 rounded-lg">
+                            <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                            </svg>
+                        </div>
+                        <span class="status-indicator status-good"></span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="total-medicines">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Total Medicines</p>
+                    <p class="text-green-600 text-xs mt-2">↗ +5.2% from last month</p>
+                </div>
+
+                <div class="metric-card card-hover rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-amber-100 rounded-lg">
+                            <svg class="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                        </div>
+                        <span class="status-indicator status-warning"></span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="low-stock">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Low Stock Alerts</p>
+                    <p class="text-amber-600 text-xs mt-2">⚠ Requires attention</p>
+                </div>
+
+                <div class="metric-card card-hover rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-100 rounded-lg">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="status-indicator status-critical alert-pulse"></span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="expiry-alerts">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Expiry Alerts</p>
+                    <p class="text-red-600 text-xs mt-2">🔴 Critical - Action needed</p>
+                </div>
+
+                <div class="metric-card card-hover rounded-xl p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <span class="status-indicator status-good"></span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="active-orders">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Active Orders</p>
+                    <p class="text-blue-600 text-xs mt-2">📋 In progress</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Actions & Recent Activity -->
+    <section class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Quick Actions -->
+                <div class="lg:col-span-1">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
+                        <div class="space-y-4">
+                            <button class="w-full flex items-center space-x-3 p-4 bg-teal-50 hover:bg-teal-100 rounded-lg transition-colors duration-200">
+                                <div class="w-10 h-10 bg-teal-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-medium text-gray-900">Add New Medicine</p>
+                                    <p class="text-sm text-gray-500">Register new pharmaceutical product</p>
+                                </div>
+                            </button>
+
+                            <button class="w-full flex items-center space-x-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors duration-200">
+                                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-medium text-gray-900">Create Purchase Order</p>
+                                    <p class="text-sm text-gray-500">Order medicines from suppliers</p>
+                                </div>
+                            </button>
+
+                            <button class="w-full flex items-center space-x-3 p-4 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors duration-200">
+                                <div class="w-10 h-10 bg-amber-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-medium text-gray-900">Generate Report</p>
+                                    <p class="text-sm text-gray-500">Create inventory or expiry report</p>
+                                </div>
+                            </button>
+
+                            <button class="w-full flex items-center space-x-3 p-4 bg-red-50 hover:bg-red-100 rounded-lg transition-colors duration-200">
+                                <div class="w-10 h-10 bg-red-600 rounded-lg flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                    </svg>
+                                </div>
+                                <div class="text-left">
+                                    <p class="font-medium text-gray-900">Expiry Alerts</p>
+                                    <p class="text-sm text-gray-500">Review medicines nearing expiry</p>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inventory Overview Chart -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900">Inventory Overview</h3>
+                            <div class="flex space-x-2">
+                                <button class="px-3 py-1 text-sm bg-teal-100 text-teal-700 rounded-md">7 Days</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">30 Days</button>
+                                <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">90 Days</button>
+                            </div>
+                        </div>
+                        <div id="inventory-chart" class="chart-container"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Activity & Warehouse Status -->
+    <section class="py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Recent Activity -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Recent Activity</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900">Order #ORD-2025-001 delivered</p>
+                                <p class="text-xs text-gray-500">Paracetamol 500mg batch received at Central Warehouse</p>
+                                <p class="text-xs text-gray-400 mt-1">2 hours ago</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                            <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900">Low stock alert</p>
+                                <p class="text-xs text-gray-500">Amoxicillin 250mg below threshold at Regional Warehouse</p>
+                                <p class="text-xs text-gray-400 mt-1">4 hours ago</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                            <div class="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900">Expiry alert</p>
+                                <p class="text-xs text-gray-500">Ibuprofen 400mg expires in 7 days at Central Warehouse</p>
+                                <p class="text-xs text-gray-400 mt-1">6 hours ago</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
+                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-gray-900">Purchase order created</p>
+                                <p class="text-xs text-gray-500">New order #ORD-2025-002 sent to MedSupply Co.</p>
+                                <p class="text-xs text-gray-400 mt-1">1 day ago</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warehouse Status -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Warehouse Status</h3>
+                    <div class="space-y-4">
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">Central Warehouse</h4>
+                                <span class="status-indicator status-good"></span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-500">Total Items</p>
+                                    <p class="font-semibold">12,543</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Capacity</p>
+                                    <p class="font-semibold">78%</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Status</p>
+                                    <p class="font-semibold text-green-600">Optimal</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">Regional Warehouse</h4>
+                                <span class="status-indicator status-warning"></span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-500">Total Items</p>
+                                    <p class="font-semibold">8,234</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Capacity</p>
+                                    <p class="font-semibold">92%</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Status</p>
+                                    <p class="font-semibold text-amber-600">Near Full</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium text-gray-900">District Storage</h4>
+                                <span class="status-indicator status-good"></span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <p class="text-gray-500">Total Items</p>
+                                    <p class="font-semibold">4,567</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Capacity</p>
+                                    <p class="font-semibold">45%</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500">Status</p>
+                                    <p class="font-semibold text-green-600">Good</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm text-gray-400">© 2025 EPSA Pharmaceutical Management System. All rights reserved.</p>
+                <p class="text-xs text-gray-500 mt-2">Ethiopian Pharmaceutical Supply Agency</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+</body>
+</html>

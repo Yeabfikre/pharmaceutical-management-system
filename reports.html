@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports & Analytics - EPSA Pharmaceutical System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { 
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .nav-link {
+            position: relative;
+            transition: color 0.3s ease;
+        }
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: #3282B8;
+            transition: width 0.3s ease;
+        }
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        .report-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .report-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .chart-container {
+            height: 400px;
+            width: 100%;
+        }
+        .small-chart {
+            height: 250px;
+            width: 100%;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .notification-badge {
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .trend-up { color: #059669; }
+        .trend-down { color: #dc2626; }
+        .trend-neutral { color: #6b7280; }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-teal-500 to-blue-600 rounded-lg flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">EP</span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900">EPSA Pharma System</span>
+                    </div>
+                    <div class="hidden md:flex space-x-6">
+                        <a href="index.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Dashboard</a>
+                        <a href="inventory.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Inventory</a>
+                        <a href="expiry.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Expiry Tracking</a>
+                        <a href="orders.html" class="nav-link text-gray-600 hover:text-gray-900 font-medium">Orders</a>
+                        <a href="reports.html" class="nav-link active text-gray-900 font-medium">Reports</a>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button class="p-2 text-gray-600 hover:text-gray-900 relative">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5-5-5h5v-12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <img src="resources/team-1.jpg" alt="User" class="w-8 h-8 rounded-full object-cover">
+                        <div class="hidden md:block">
+                            <p class="text-sm font-medium text-gray-900">Dr. Sarah Johnson</p>
+                            <p class="text-xs text-gray-500">System Administrator</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="py-8 bg-gradient-to-r from-purple-50 to-blue-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+                    <p class="text-gray-600 mt-2">Comprehensive pharmaceutical supply chain insights</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button id="custom-report-btn" class="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Custom Report
+                    </button>
+                    <button class="border border-gray-300 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                        Export All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Performance Indicators -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="kpi-card report-card rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-purple-100 rounded-lg">
+                            <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                            </svg>
+                        </div>
+                        <span class="trend-up text-sm font-medium">↗ +12.5%</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="inventory-value">$0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Total Inventory Value</p>
+                    <p class="text-gray-500 text-xs mt-2">vs. last month</p>
+                </div>
+
+                <div class="kpi-card report-card rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <span class="trend-up text-sm font-medium">↗ +8.2%</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="order-fulfillment">0%</h3>
+                    <p class="text-gray-600 text-sm mt-1">Order Fulfillment Rate</p>
+                    <p class="text-gray-500 text-xs mt-2">vs. last month</p>
+                </div>
+
+                <div class="kpi-card report-card rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-red-100 rounded-lg">
+                            <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="trend-down text-sm font-medium">↘ -15.3%</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="wastage-rate">0%</h3>
+                    <p class="text-gray-600 text-sm mt-1">Medicine Wastage Rate</p>
+                    <p class="text-gray-500 text-xs mt-2">vs. last month</p>
+                </div>
+
+                <div class="kpi-card report-card rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <span class="trend-up text-sm font-medium">↗ +5.7%</span>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-900" id="supplier-performance">0</h3>
+                    <p class="text-gray-600 text-sm mt-1">Avg. Supplier Performance</p>
+                    <p class="text-gray-500 text-xs mt-2">out of 5.0</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Analytics Charts -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Inventory Trends -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">Inventory Trends</h3>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 text-sm bg-purple-100 text-purple-700 rounded-md">6 Months</button>
+                            <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">1 Year</button>
+                            <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">2 Years</button>
+                        </div>
+                    </div>
+                    <div id="inventory-trends-chart" class="chart-container"></div>
+                </div>
+
+                <!-- Order Analysis -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-gray-900">Order Analysis</h3>
+                        <div class="flex space-x-2">
+                            <button class="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded-md">Monthly</button>
+                            <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Quarterly</button>
+                            <button class="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-md">Yearly</button>
+                        </div>
+                    </div>
+                    <div id="order-analysis-chart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Detailed Reports Section -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Expiry Analysis -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Expiry Analysis</h3>
+                    <div id="expiry-analysis-chart" class="small-chart"></div>
+                    <div class="mt-4 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Medicines Expiring (30 days)</span>
+                            <span class="font-semibold text-red-600">23 items</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Potential Savings</span>
+                            <span class="font-semibold text-green-600">$12,450</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Supplier Performance -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Top Suppliers</h3>
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <span class="text-blue-600 font-semibold text-sm">1</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">MedSupply Co.</p>
+                                    <p class="text-xs text-gray-500">98.5% fulfillment</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-gray-900">4.8★</p>
+                                <p class="text-xs text-gray-500">$125K orders</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                    <span class="text-green-600 font-semibold text-sm">2</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">HealthPlus Inc.</p>
+                                    <p class="text-xs text-gray-500">96.2% fulfillment</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-gray-900">4.9★</p>
+                                <p class="text-xs text-gray-500">$98K orders</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                    <span class="text-amber-600 font-semibold text-sm">3</span>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">PharmaCare Ltd.</p>
+                                    <p class="text-xs text-gray-500">94.7% fulfillment</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-semibold text-gray-900">4.6★</p>
+                                <p class="text-xs text-gray-500">$87K orders</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Analysis -->
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-6">Cost Breakdown</h3>
+                    <div id="cost-analysis-chart" class="small-chart"></div>
+                    <div class="mt-4 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Procurement Costs</span>
+                            <span class="font-semibold">$485,200</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Storage Costs</span>
+                            <span class="font-semibold">$52,800</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Transportation</span>
+                            <span class="font-semibold">$28,400</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Report Templates -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900">Report Templates</h3>
+                    <button id="create-custom-report" class="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Create Custom Report
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-purple-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Inventory Report</h4>
+                                <p class="text-sm text-gray-500">Current stock levels and analysis</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 2 hours ago</span>
+                            <button class="text-purple-600 hover:text-purple-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-blue-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Expiry Report</h4>
+                                <p class="text-sm text-gray-500">Medicines nearing expiration</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 1 hour ago</span>
+                            <button class="text-blue-600 hover:text-blue-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-green-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Procurement Report</h4>
+                                <p class="text-sm text-gray-500">Order history and analysis</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 3 hours ago</span>
+                            <button class="text-green-600 hover:text-green-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-amber-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Performance Report</h4>
+                                <p class="text-sm text-gray-500">System efficiency metrics</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 30 minutes ago</span>
+                            <button class="text-amber-600 hover:text-amber-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-red-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Risk Assessment</h4>
+                                <p class="text-sm text-gray-500">Supply chain risk analysis</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 4 hours ago</span>
+                            <button class="text-red-600 hover:text-red-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+
+                    <div class="report-card border border-gray-200 rounded-lg p-4 hover:border-indigo-500 transition-colors duration-200 cursor-pointer">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-medium text-gray-900">Financial Report</h4>
+                                <p class="text-sm text-gray-500">Cost and revenue analysis</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-400">Last updated: 6 hours ago</span>
+                            <button class="text-indigo-600 hover:text-indigo-700 text-sm font-medium">Generate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Custom Report Modal -->
+    <div id="custom-report-modal" class="modal">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-lg font-semibold text-gray-900">Create Custom Report</h3>
+                <button id="close-custom-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="custom-report-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Report Type</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option>Inventory Analysis</option>
+                            <option>Expiry Tracking</option>
+                            <option>Order Management</option>
+                            <option>Financial Summary</option>
+                            <option>Supplier Performance</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+                        <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            <option>Last 30 days</option>
+                            <option>Last 90 days</option>
+                            <option>Last 6 months</option>
+                            <option>Last year</option>
+                            <option>Custom range</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Report Name</label>
+                    <input type="text" placeholder="Enter report name..." 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Include Sections</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-600">Executive Summary</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-600">Detailed Analysis</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-600">Trend Analysis</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" checked class="rounded border-gray-300 text-purple-600 focus:ring-purple-500">
+                            <span class="ml-2 text-sm text-gray-600">Recommendations</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex space-x-3 pt-4">
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:shadow-lg transition-all duration-300">
+                        Generate Report
+                    </button>
+                    <button type="button" id="cancel-custom-report" class="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-all duration-300">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-8 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <p class="text-sm text-gray-400">© 2025 EPSA Pharmaceutical Management System. All rights reserved.</p>
+                <p class="text-xs text-gray-500 mt-2">Ethiopian Pharmaceutical Supply Agency</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        // Reports and Analytics specific functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeReportsPage();
+        });
+
+        function initializeReportsPage() {
+            updateKPIs();
+            renderInventoryTrendsChart();
+            renderOrderAnalysisChart();
+            renderExpiryAnalysisChart();
+            renderCostAnalysisChart();
+            initializeReportModal();
+            
+            // Animate page elements
+            anime({
+                targets: '.kpi-card',
+                translateY: [20, 0],
+                opacity: [0, 1],
+                duration: 800,
+                delay: anime.stagger(100),
+                easing: 'easeOutCubic'
+            });
+            
+            anime({
+                targets: '.bg-white',
+                translateY: [30, 0],
+                opacity: [0, 1],
+                duration: 1000,
+                delay: anime.stagger(150, {start: 400}),
+                easing: 'easeOutCubic'
+            });
+        }
+
+        function updateKPIs() {
+            const kpis = [
+                { id: 'inventory-value', target: 1258400, prefix: '$', duration: 2000 },
+                { id: 'order-fulfillment', target: 96.8, suffix: '%', duration: 1800 },
+                { id: 'wastage-rate', target: 2.3, suffix: '%', duration: 1600 },
+                { id: 'supplier-performance', target: 4.7, duration: 2200 }
+            ];
+
+            kpis.forEach(kpi => {
+                const element = document.getElementById(kpi.id);
+                if (element) {
+                    animateKPI(element, kpi.target, kpi.prefix, kpi.suffix, kpi.duration);
+                }
+            });
+        }
+
+        function animateKPI(element, target, prefix = '', suffix = '', duration = 2000) {
+            let start = 0;
+            const increment = target / (duration / 16);
+            
+            function updateKPI() {
+                start += increment;
+                if (start < target) {
+                    const currentValue = suffix === '%' ? start.toFixed(1) : Math.floor(start);
+                    element.textContent = `${prefix}${currentValue}${suffix}`;
+                    requestAnimationFrame(updateKPI);
+                } else {
+                    const finalValue = suffix === '%' ? target.toFixed(1) : target.toLocaleString();
+                    element.textContent = `${prefix}${finalValue}${suffix}`;
+                }
+            }
+            
+            setTimeout(updateKPI, 300);
+        }
+
+        function renderInventoryTrendsChart() {
+            const chartElement = document.getElementById('inventory-trends-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const stockIn = [1200, 1800, 1500, 2200, 1900, 2400];
+            const stockOut = [800, 1200, 1100, 1600, 1400, 1800];
+            const currentStock = [2847, 3421, 3892, 4561, 4987, 5423];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#6a7985'
+                        }
+                    }
+                },
+                legend: {
+                    data: ['Stock In', 'Stock Out', 'Current Stock'],
+                    bottom: 0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '10%',
+                    containLabel: true
+                },
+                xAxis: [
+                    {
+                        type: 'category',
+                        boundaryGap: false,
+                        data: months
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Quantity'
+                    }
+                ],
+                series: [
+                    {
+                        name: 'Stock In',
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: { color: '#4ECDC4', width: 3 },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(78, 205, 196, 0.3)' },
+                                    { offset: 1, color: 'rgba(78, 205, 196, 0.1)' }
+                                ]
+                            }
+                        },
+                        data: stockIn
+                    },
+                    {
+                        name: 'Stock Out',
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: { color: '#FF6B6B', width: 3 },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(255, 107, 107, 0.3)' },
+                                    { offset: 1, color: 'rgba(255, 107, 107, 0.1)' }
+                                ]
+                            }
+                        },
+                        data: stockOut
+                    },
+                    {
+                        name: 'Current Stock',
+                        type: 'line',
+                        smooth: true,
+                        lineStyle: { color: '#3282B8', width: 4 },
+                        data: currentStock
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function renderOrderAnalysisChart() {
+            const chartElement = document.getElementById('order-analysis-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const orders = [45, 52, 38, 67, 73, 89, 94, 87, 76, 82, 91, 98];
+            const fulfillment = [92, 94, 89, 96, 91, 95, 97, 93, 90, 96, 94, 98];
+            
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross'
+                    }
+                },
+                legend: {
+                    data: ['Orders', 'Fulfillment Rate'],
+                    bottom: 0
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '10%',
+                    containLabel: true
+                },
+                xAxis: [
+                    {
+                        type: 'category',
+                        data: months
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: 'Orders',
+                        position: 'left'
+                    },
+                    {
+                        type: 'value',
+                        name: 'Fulfillment %',
+                        position: 'right',
+                        min: 80,
+                        max: 100
+                    }
+                ],
+                series: [
+                    {
+                        name: 'Orders',
+                        type: 'bar',
+                        data: orders,
+                        itemStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: '#3282B8' },
+                                    { offset: 1, color: '#0F4C75' }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        name: 'Fulfillment Rate',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        data: fulfillment,
+                        lineStyle: { color: '#4ECDC4', width: 3 },
+                        symbol: 'circle',
+                        symbolSize: 8
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function renderExpiryAnalysisChart() {
+            const chartElement = document.getElementById('expiry-analysis-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} ({d}%)'
+                },
+                series: [
+                    {
+                        name: 'Expiry Status',
+                        type: 'pie',
+                        radius: ['40%', '70%'],
+                        center: ['50%', '50%'],
+                        data: [
+                            { value: 23, name: 'Expiring (30 days)', itemStyle: { color: '#dc2626' } },
+                            { value: 45, name: 'Warning (90 days)', itemStyle: { color: '#d97706' } },
+                            { value: 156, name: 'Safe (>90 days)', itemStyle: { color: '#059669' } }
+                        ],
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        }
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function renderCostAnalysisChart() {
+            const chartElement = document.getElementById('cost-analysis-chart');
+            if (!chartElement) return;
+
+            const chart = echarts.init(chartElement);
+            
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: ${c} ({d}%)'
+                },
+                series: [
+                    {
+                        name: 'Cost Breakdown',
+                        type: 'pie',
+                        radius: '70%',
+                        center: ['50%', '50%'],
+                        data: [
+                            { value: 485200, name: 'Procurement', itemStyle: { color: '#3282B8' } },
+                            { value: 52800, name: 'Storage', itemStyle: { color: '#4ECDC4' } },
+                            { value: 28400, name: 'Transportation', itemStyle: { color: '#FF6B6B' } },
+                            { value: 15600, name: 'Other', itemStyle: { color: '#FFE66D' } }
+                        ],
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 10,
+                                shadowOffsetX: 0,
+                                shadowColor: 'rgba(0, 0, 0, 0.5)'
+                            }
+                        }
+                    }
+                ]
+            };
+
+            chart.setOption(option);
+            
+            window.addEventListener('resize', function() {
+                chart.resize();
+            });
+        }
+
+        function initializeReportModal() {
+            const customBtn = document.getElementById('custom-report-btn');
+            const createBtn = document.getElementById('create-custom-report');
+            const modal = document.getElementById('custom-report-modal');
+            const closeBtn = document.getElementById('close-custom-modal');
+            const cancelBtn = document.getElementById('cancel-custom-report');
+            const form = document.getElementById('custom-report-form');
+            
+            [customBtn, createBtn].forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.add('show');
+                    anime({
+                        targets: modal.querySelector('.bg-white'),
+                        scale: [0.8, 1],
+                        opacity: [0, 1],
+                        duration: 300,
+                        easing: 'easeOutCubic'
+                    });
+                });
+            });
+            
+            [closeBtn, cancelBtn].forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modal.classList.remove('show');
+                });
+            });
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                generateCustomReport();
+            });
+        }
+
+        function generateCustomReport() {
+            document.getElementById('custom-report-modal').classList.remove('show');
+            EPSA.showNotification('Custom report generation started!', 'success');
+            
+            // Simulate report generation
+            setTimeout(() => {
+                EPSA.showNotification('Custom report generated successfully!', 'success');
+            }, 2000);
+        }
+
+        // Add click handlers for report template buttons
+        document.addEventListener('click', function(e) {
+            if (e.target.textContent === 'Generate' && e.target.closest('.report-card')) {
+                const reportName = e.target.closest('.report-card').querySelector('h4').textContent;
+                EPSA.showNotification(`Generating ${reportName}...`, 'info');
+                
+                setTimeout(() => {
+                    EPSA.showNotification(`${reportName} generated successfully!`, 'success');
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>
